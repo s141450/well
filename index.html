@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Multiphase Reservoir — Well Testing Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#0d1117;--surface:#161b22;--surface2:#1c2330;
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
+  --blue:#2f7be8;--blue-lt:#4e9aff;--orange:#e07b2f;--orange-lt:#f5a455;
+  --green:#2ab77a;--red:#e05555;--purple:#9b7fe8;
+  --text:#e6edf3;--text2:#8b949e;--text3:#525d6a;
+  --mono:'IBM Plex Mono',monospace;--sans:'Sora',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;padding:1.2rem 1.6rem 2rem}
+.header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.2rem;padding-bottom:1rem;border-bottom:1px solid var(--border)}
+.header-left h1{font-size:17px;font-weight:600;letter-spacing:-0.3px;margin-bottom:3px}
+.header-left .sub{font-size:11px;color:var(--text2);font-family:var(--mono)}
+.badge{font-size:10px;font-family:var(--mono);padding:3px 8px;border-radius:4px;font-weight:500;letter-spacing:0.5px;background:rgba(47,123,232,0.15);color:var(--blue-lt);border:1px solid rgba(47,123,232,0.3)}
+.main{display:grid;grid-template-columns:270px 1fr;gap:0.9rem;align-items:start}
+.sidebar{display:flex;flex-direction:column;gap:0.7rem}
+.content{display:flex;flex-direction:column;gap:0.7rem}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
+.panel-title{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--text2);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.panel-title::before{content:'';width:3px;height:11px;border-radius:2px;background:var(--orange);display:inline-block}
+.fp-group{margin-bottom:9px}.fp-group:last-child{margin-bottom:0}
+.fp-section{font-size:9px;font-weight:700;letter-spacing:0.7px;color:var(--text3);text-transform:uppercase;margin-bottom:5px;padding-bottom:3px;border-bottom:1px solid var(--border)}
+.fp-row{display:grid;grid-template-columns:62px 1fr 54px;align-items:center;gap:4px;margin-bottom:4px}
+.fp-row label{font-size:11px;color:var(--text2);font-family:var(--mono);text-align:right;padding-right:2px}
+.fp-in{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:11px;padding:3px 6px;outline:none;transition:border-color 0.15s}
+.fp-in:focus{border-color:var(--blue)}
+.fp-in::-webkit-inner-spin-button,.fp-in::-webkit-outer-spin-button{opacity:0.4}
+.fp-unit{font-size:9px;color:var(--text3);font-family:var(--mono)}
+.toggle-row{display:flex;align-items:center;gap:10px;margin-top:2px}
+.toggle-label{font-size:12px;color:var(--text2)}
+.toggle{position:relative;width:44px;height:22px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;inset:0;background:var(--surface2);border-radius:11px;cursor:pointer;border:1px solid var(--border2);transition:background 0.2s}
+.toggle-slider::before{content:'';position:absolute;width:16px;height:16px;left:2px;top:2px;background:var(--text2);border-radius:50%;transition:transform 0.2s,background 0.2s}
+.toggle input:checked+.toggle-slider{background:rgba(47,123,232,0.3);border-color:var(--blue)}
+.toggle input:checked+.toggle-slider::before{transform:translateX(22px);background:var(--blue-lt)}
+.toggle-state{font-size:12px;font-family:var(--mono);color:var(--text);font-weight:500}
+.method-panel{padding:12px 14px}
+.method-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.method-icon{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.method-name{font-size:13px;font-weight:600}
+.method-condition{font-size:10px;color:var(--text2);font-family:var(--mono);margin-top:2px}
+.method-desc{font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:8px}
+.eq-block{font-family:var(--mono);font-size:10.5px;background:rgba(0,0,0,0.3);border-radius:6px;padding:9px 11px;line-height:2;border:1px solid var(--border);color:#cde;white-space:pre-wrap}
+.eq-block .eq-head{color:var(--orange-lt);font-weight:500;font-size:9px;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:4px}
+.m-perrine .method-icon{background:rgba(47,123,232,0.15);color:var(--blue-lt)}.m-perrine .method-name{color:var(--blue-lt)}.m-perrine .panel-title::before{background:var(--blue)}
+.m-psq .method-icon{background:rgba(224,123,47,0.15);color:var(--orange-lt)}.m-psq .method-name{color:var(--orange-lt)}.m-psq .panel-title::before{background:var(--orange)}
+.m-psp .method-icon{background:rgba(42,183,122,0.15);color:var(--green)}.m-psp .method-name{color:var(--green)}.m-psp .panel-title::before{background:var(--green)}
+.results-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.res-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px}
+.res-card .lbl{font-size:9px;color:var(--text2);margin-bottom:3px;font-family:var(--mono)}
+.res-card .val{font-size:14px;font-weight:600;font-family:var(--mono);color:var(--text)}
+.res-card .unit{font-size:8px;color:var(--text3);margin-top:1px;font-family:var(--mono)}
+.res-card.hi{border-color:rgba(78,154,255,0.35)}.res-card.hi .val{color:var(--blue-lt)}
+.res-row2{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.7rem}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 13px}
+.ch-title{font-size:11px;font-weight:600;color:var(--text);margin-bottom:1px}
+.ch-sub{font-size:9px;color:var(--text3);margin-bottom:7px;font-family:var(--mono)}
+.legend-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.leg{display:flex;align-items:center;gap:4px;font-size:9px;color:var(--text2);font-family:var(--mono)}
+.leg-line{width:16px;height:2px;border-radius:1px;display:inline-block}
+.leg-dash{display:inline-block;width:16px;height:0;border-top:2px dashed}
+.footer{margin-top:0.9rem;padding:8px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:9.5px;font-family:var(--mono);color:var(--text3);line-height:1.9}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-left">
+    <h1>Multiphase Reservoir — Well Testing Dashboard</h1>
+    <div class="sub">PNGE 4612 · Spring 2026 · Dr. Faras Al Balushi &nbsp;|&nbsp; Enter measured data → k, kr, skin calculated automatically</div>
+  </div>
+  <span class="badge">Perrine–Martin · P² · Pseudo-Pressure</span>
+</div>
+
+<div class="main">
+<div class="sidebar">
+
+  <div class="panel">
+    <div class="panel-title">Test Type</div>
+    <div class="toggle-row">
+      <label class="toggle"><input type="checkbox" id="tt-toggle"><span class="toggle-slider"></span></label>
+      <span class="toggle-label">Mode:</span>
+      <span class="toggle-state" id="v-tt">Drawdown</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Saturations (must sum = 1)</div>
+    <div class="fp-group">
+      <div class="fp-row"><label>S<sub>o</sub></label><input class="fp-in" id="fp-so" type="number" value="0.58" min="0" max="1" step="0.01"><span class="fp-unit">frac</span></div>
+      <div class="fp-row"><label>S<sub>w</sub></label><input class="fp-in" id="fp-sw" type="number" value="0.34" min="0" max="1" step="0.01"><span class="fp-unit">frac</span></div>
+      <div class="fp-row"><label>S<sub>g</sub></label><input class="fp-in" id="fp-sg" type="number" value="0.08" min="0" max="1" step="0.01"><span class="fp-unit">frac</span></div>
+      <div style="font-size:10px;font-family:var(--mono);margin-top:5px;padding:4px 7px;border-radius:4px;background:var(--surface2)">
+        Sum: <span id="sat-sum" style="font-weight:600;color:var(--green)">1.00</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Well Test Measurements</div>
+    <div class="fp-group">
+      <div class="fp-section">Pressures (psi)</div>
+      <div class="fp-row"><label>P<sub>i</sub></label><input class="fp-in" id="fp-pi" type="number" value="3500" min="100" step="1"><span class="fp-unit">psi</span></div>
+      <div class="fp-row"><label>P<sub>wf</sub></label><input class="fp-in" id="fp-pwf" type="number" value="2028" min="0" step="1"><span class="fp-unit">psi</span></div>
+      <div class="fp-row"><label>P<sub>1hr</sub></label><input class="fp-in" id="fp-p1hr" type="number" value="2466" min="0" step="1"><span class="fp-unit">psi</span></div>
+    </div>
+    <div class="fp-group">
+      <div class="fp-section">MTR Slope (from semi-log plot)</div>
+      <div class="fp-row"><label>m</label><input class="fp-in" id="fp-m" type="number" value="78" min="0.1" step="0.1"><span class="fp-unit">psi/cycle</span></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Fluid Properties</div>
+    <div class="fp-group">
+      <div class="fp-section">Viscosities</div>
+      <div class="fp-row"><label>μ<sub>o</sub></label><input class="fp-in" id="fp-muo" type="number" value="1.5" min="0.001" step="0.01"><span class="fp-unit">cp</span></div>
+      <div class="fp-row"><label>μ<sub>w</sub></label><input class="fp-in" id="fp-muw" type="number" value="0.7" min="0.001" step="0.01"><span class="fp-unit">cp</span></div>
+      <div class="fp-row"><label>μ<sub>g</sub></label><input class="fp-in" id="fp-mug" type="number" value="0.03" min="0.001" step="0.001"><span class="fp-unit">cp</span></div>
+    </div>
+    <div class="fp-group">
+      <div class="fp-section">FVF &amp; GOR</div>
+      <div class="fp-row"><label>B<sub>o</sub></label><input class="fp-in" id="fp-bo" type="number" value="1.3" min="0.1" step="0.01"><span class="fp-unit">bbl/STB</span></div>
+      <div class="fp-row"><label>B<sub>w</sub></label><input class="fp-in" id="fp-bw" type="number" value="1.02" min="0.1" step="0.01"><span class="fp-unit">bbl/STB</span></div>
+      <div class="fp-row"><label>B<sub>g</sub>×10⁻³</label><input class="fp-in" id="fp-bg" type="number" value="1.48" min="0.001" step="0.01"><span class="fp-unit">bbl/SCF</span></div>
+      <div class="fp-row"><label>R<sub>s</sub></label><input class="fp-in" id="fp-rs" type="number" value="685" min="0" step="1"><span class="fp-unit">SCF/STB</span></div>
+    </div>
+    <div class="fp-group">
+      <div class="fp-section">Production Rates</div>
+      <div class="fp-row"><label>q<sub>o</sub></label><input class="fp-in" id="fp-qo" type="number" value="245" min="0" step="1"><span class="fp-unit">STB/d</span></div>
+      <div class="fp-row"><label>q<sub>w</sub></label><input class="fp-in" id="fp-qw" type="number" value="38" min="0" step="1"><span class="fp-unit">STB/d</span></div>
+      <div class="fp-row"><label>q<sub>gt</sub></label><input class="fp-in" id="fp-qgt" type="number" value="489" min="0" step="1"><span class="fp-unit">MSCF/d</span></div>
+      <div class="fp-row"><label>t<sub>p</sub></label><input class="fp-in" id="fp-tp" type="number" value="200" min="1" step="1"><span class="fp-unit">hr</span></div>
+    </div>
+    <div class="fp-group">
+      <div class="fp-section">Rock &amp; Well</div>
+      <div class="fp-row"><label>h</label><input class="fp-in" id="fp-h" type="number" value="38" min="1" step="1"><span class="fp-unit">ft</span></div>
+      <div class="fp-row"><label>φ</label><input class="fp-in" id="fp-phi" type="number" value="0.17" min="0.01" max="0.5" step="0.01"><span class="fp-unit">frac</span></div>
+      <div class="fp-row"><label>r<sub>w</sub></label><input class="fp-in" id="fp-rw" type="number" value="0.3" min="0.01" step="0.01"><span class="fp-unit">ft</span></div>
+    </div>
+    <div class="fp-group">
+      <div class="fp-section">Compressibility</div>
+      <div class="fp-row"><label>c<sub>o</sub>×10⁻⁶</label><input class="fp-in" id="fp-co" type="number" value="86.4" min="0" step="0.1"><span class="fp-unit">psi⁻¹</span></div>
+      <div class="fp-row"><label>c<sub>w</sub>×10⁻⁶</label><input class="fp-in" id="fp-cw" type="number" value="3.6" min="0" step="0.1"><span class="fp-unit">psi⁻¹</span></div>
+      <div class="fp-row"><label>c<sub>g</sub>×10⁻³</label><input class="fp-in" id="fp-cg" type="number" value="0.39" min="0" step="0.01"><span class="fp-unit">psi⁻¹</span></div>
+      <div class="fp-row"><label>c<sub>f</sub>×10⁻⁶</label><input class="fp-in" id="fp-cf" type="number" value="3.5" min="0" step="0.1"><span class="fp-unit">psi⁻¹</span></div>
+    </div>
+    <div class="fp-group">
+      <div class="fp-section">Rel-perm Endpoints (Corey)</div>
+      <div class="fp-row"><label>S<sub>wi</sub></label><input class="fp-in" id="fp-swi" type="number" value="0.20" min="0.01" max="0.6" step="0.01"><span class="fp-unit">frac</span></div>
+      <div class="fp-row"><label>S<sub>or</sub></label><input class="fp-in" id="fp-sor" type="number" value="0.20" min="0.01" max="0.6" step="0.01"><span class="fp-unit">frac</span></div>
+      <div class="fp-row"><label>k°<sub>ro</sub></label><input class="fp-in" id="fp-kro0" type="number" value="1.0" min="0.01" max="1" step="0.01"><span class="fp-unit">frac</span></div>
+      <div class="fp-row"><label>k°<sub>rw</sub></label><input class="fp-in" id="fp-krw0" type="number" value="0.40" min="0.01" max="1" step="0.01"><span class="fp-unit">frac</span></div>
+    </div>
+  </div>
+
+</div><!-- /sidebar -->
+
+<div class="content">
+
+  <div class="panel method-panel" id="mbox-wrap">
+    <div class="panel-title" id="mbox-ptitle">Active Method</div>
+    <div class="method-head">
+      <div class="method-icon" id="mbox-icon">📊</div>
+      <div><div class="method-name" id="mbox-name">—</div><div class="method-condition" id="mbox-cond">—</div></div>
+    </div>
+    <div class="method-desc" id="mbox-desc">—</div>
+    <div class="eq-block" id="mbox-eq"></div>
+  </div>
+
+  <!-- Calculated results -->
+  <div class="results-grid">
+    <div class="res-card hi"><div class="lbl">k<sub>o</sub> effective</div><div class="val" id="rv-ko">—</div><div class="unit">md</div></div>
+    <div class="res-card hi"><div class="lbl">k<sub>w</sub> effective</div><div class="val" id="rv-kw">—</div><div class="unit">md</div></div>
+    <div class="res-card hi"><div class="lbl">k<sub>g</sub> effective</div><div class="val" id="rv-kg">—</div><div class="unit">md</div></div>
+    <div class="res-card hi"><div class="lbl">K abs = k<sub>o</sub>/k<sub>ro</sub></div><div class="val" id="rv-k">—</div><div class="unit">md</div></div>
+    <div class="res-card hi"><div class="lbl">Skin factor s</div><div class="val" id="rv-s">—</div><div class="unit">dimensionless</div></div>
+    <div class="res-card"><div class="lbl">λ<sub>t</sub> total mobility</div><div class="val" id="rv-lt">—</div><div class="unit">md/cp</div></div>
+    <div class="res-card"><div class="lbl">C<sub>t</sub> total comp.</div><div class="val" id="rv-ct">—</div><div class="unit">×10⁻⁶ psi⁻¹</div></div>
+  </div>
+
+  <div class="res-row2">
+    <div class="res-card"><div class="lbl">k<sub>ro</sub> at S<sub>w</sub></div><div class="val" id="rv-kro">—</div><div class="unit">frac (Corey)</div></div>
+    <div class="res-card"><div class="lbl">k<sub>rw</sub> at S<sub>w</sub></div><div class="val" id="rv-krw">—</div><div class="unit">frac (Corey)</div></div>
+    <div class="res-card"><div class="lbl">k<sub>ro</sub>/k<sub>rw</sub></div><div class="val" id="rv-ratio">—</div><div class="unit">from Corey</div></div>
+    <div class="res-card"><div class="lbl">(qB)<sub>t</sub></div><div class="val" id="rv-qbt">—</div><div class="unit">RB/d</div></div>
+  </div>
+
+  <div class="chart-grid">
+
+    <div class="chart-card">
+      <div class="ch-title" id="ch1-title">Transient Pressure Plot</div>
+      <div class="ch-sub" id="ch1-sub">—</div>
+      <div style="position:relative;height:190px"><canvas id="c1"></canvas></div>
+      <div class="legend-row">
+        <span class="leg"><span class="leg-line" style="background:var(--blue-lt)"></span>P response</span>
+        <span class="leg"><span class="leg-dash" style="border-color:var(--orange-lt)"></span>MTR (slope m)</span>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="ch-title">Relative permeability — k<sub>ro</sub> &amp; k<sub>rw</sub> vs S<sub>w</sub></div>
+      <div class="ch-sub" id="ch2-sub">Corey correlations</div>
+      <div style="position:relative;height:185px"><canvas id="c2"></canvas></div>
+      <div class="legend-row">
+        <span class="leg"><span class="leg-line" style="background:var(--blue-lt)"></span>k<sub>ro</sub></span>
+        <span class="leg"><span class="leg-dash" style="border-color:var(--green)"></span>k<sub>rw</sub></span>
+        <span class="leg"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--orange);vertical-align:middle;margin-right:1px"></span>S<sub>w</sub> now</span>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="ch-title">Phase mobility — λ<sub>o</sub>, λ<sub>w</sub>, λ<sub>g</sub></div>
+      <div class="ch-sub">λ = k<sub>eff</sub>/μ (md/cp) from calculated k<sub>o</sub>, k<sub>w</sub>, k<sub>g</sub></div>
+      <div style="position:relative;height:190px"><canvas id="c3"></canvas></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="ch-title">k<sub>ro</sub>/k<sub>rw</sub> ratio vs S<sub>w</sub></div>
+      <div class="ch-sub">Log scale — horizontal line = measured k<sub>o</sub>/k<sub>w</sub> ratio — intersection gives S<sub>w</sub></div>
+      <div style="position:relative;height:185px"><canvas id="c4"></canvas></div>
+      <div class="legend-row">
+        <span class="leg"><span class="leg-line" style="background:var(--purple)"></span>k<sub>ro</sub>/k<sub>rw</sub> curve</span>
+        <span class="leg"><span class="leg-dash" style="border-color:var(--orange-lt)"></span>measured k<sub>o</sub>/k<sub>w</sub></span>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<div class="footer">
+  <b style="color:var(--text2)">Calculated (Perrine–Martin, PDF p.10–11):</b>
+  &nbsp;k<sub>o</sub>=162.6·q<sub>o</sub>B<sub>o</sub>μ<sub>o</sub>/(m·h) &nbsp;·&nbsp;
+  k<sub>w</sub>=162.6·q<sub>w</sub>B<sub>w</sub>μ<sub>w</sub>/(m·h) &nbsp;·&nbsp;
+  k<sub>g</sub>=162.6·[q<sub>gt</sub>−q<sub>o</sub>R<sub>s</sub>/1000]·B<sub>g</sub>μ<sub>g</sub>/(m·h) &nbsp;·&nbsp;
+  K=k<sub>o</sub>/k<sub>ro</sub> &nbsp;·&nbsp;
+  s=1.151·[(P<sub>ws1hr</sub>−P<sub>wf</sub>)/|m| − log(λ<sub>t</sub>/φC<sub>t</sub>r<sub>w</sub>²)+3.23] buildup &nbsp;|&nbsp; 1.151·[(P<sub>i</sub>−P<sub>wf1hr</sub>)/|m| − log(λ<sub>t</sub>/φC<sub>t</sub>r<sub>w</sub>²)+3.23] drawdown &nbsp;·&nbsp;
+  C<sub>t</sub>=S<sub>o</sub>c<sub>o</sub>+S<sub>w</sub>c<sub>w</sub>+S<sub>g</sub>c<sub>g</sub>+c<sub>f</sub>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const gv = id => +document.getElementById(id).value || 0;
+const tM='#8b949e', gC='rgba(255,255,255,0.05)';
+
+function getP(){
+  return {
+    So:gv('fp-so'), Sw:gv('fp-sw'), Sg:gv('fp-sg'),
+    Pi:gv('fp-pi'), Pwf:gv('fp-pwf'), P1hr:gv('fp-p1hr'), m:gv('fp-m'),
+    muO:gv('fp-muo'), muW:gv('fp-muw'), muG:gv('fp-mug'),
+    Bo:gv('fp-bo'), Bw:gv('fp-bw'), Bg:gv('fp-bg')*1e-3,
+    Rs:gv('fp-rs'),
+    qo:gv('fp-qo'), qw:gv('fp-qw'), qgt:gv('fp-qgt'), tp:gv('fp-tp'),
+    h:gv('fp-h'), phi:gv('fp-phi'), rw:gv('fp-rw'),
+    co:gv('fp-co')*1e-6, cw:gv('fp-cw')*1e-6,
+    cg:gv('fp-cg')*1e-3, cf:gv('fp-cf')*1e-6,
+    Swi:gv('fp-swi'), Sor:gv('fp-sor'),
+    kro0:gv('fp-kro0'), krw0:gv('fp-krw0'),
+    no:2, nw:3
+  };
+}
+
+// Corey kro: kro0 at Sw≤Swi → 0 at Sw≥(1-Sor)  — strictly concave downward
+// Corey krw: 0 at Sw≤Swi → krw0 at Sw≥(1-Sor)  — strictly concave upward
+function kroF(sw,p){
+  if(sw<=p.Swi) return p.kro0;
+  if(sw>=1-p.Sor) return 0;
+  const Se=(1-sw-p.Sor)/(1-p.Swi-p.Sor);
+  return Math.max(0, p.kro0*Math.pow(Se,p.no));
+}
+function krwF(sw,p){
+  if(sw<=p.Swi) return 0;
+  if(sw>=1-p.Sor) return p.krw0;
+  const Se=(sw-p.Swi)/(1-p.Swi-p.Sor);
+  return Math.min(p.krw0, p.krw0*Math.pow(Se,p.nw));
+}
+
+// (qB)t  [RB/d]  — PDF p.9
+// freeGas [SCF/d] = qgt[MSCF/d]×1000 − qo[STB/d]×Rs[SCF/STB]
+// (qB)t = qo·Bo + qw·Bw + freeGas·Bg
+function calcQBt(p){
+  const fg = p.qgt*1000 - p.qo*p.Rs;
+  return p.qo*p.Bo + p.qw*p.Bw + fg*p.Bg;
+}
+
+// Ct  [psi⁻¹]  — PDF p.20 Example-11
+function calcCt(p){
+  return p.So*p.co + p.Sw*p.cw + p.Sg*p.cg + p.cf;
+}
+
+const baseOpts={
+  responsive:true, maintainAspectRatio:false, animation:{duration:180},
+  plugins:{legend:{display:false},tooltip:{
+    backgroundColor:'rgba(13,17,23,0.93)',borderColor:'rgba(255,255,255,0.12)',borderWidth:1,
+    titleColor:'#e6edf3',bodyColor:'#8b949e',padding:8,
+    titleFont:{family:'IBM Plex Mono',size:11},bodyFont:{family:'IBM Plex Mono',size:11}
+  }},
+  scales:{
+    x:{ticks:{color:tM,font:{size:9,family:'IBM Plex Mono'},maxTicksLimit:7},grid:{color:gC},border:{color:gC}},
+    y:{ticks:{color:tM,font:{size:9,family:'IBM Plex Mono'},maxTicksLimit:6},grid:{color:gC},border:{color:gC}}
+  }
+};
+function cloneO(o){return JSON.parse(JSON.stringify(o));}
+
+// 101 evenly-spaced Sw points 0→1
+const swArr=Array.from({length:101},(_,i)=>+(i/100).toFixed(3));
+
+let c1,c2,c3,c4;
+
+function initCharts(){
+  // c1 – transient
+  const o1=cloneO(baseOpts);
+  o1.scales.x.title={display:true,text:'',color:tM,font:{size:9,family:'IBM Plex Mono'}};
+  o1.scales.y.title={display:true,text:'',color:tM,font:{size:9,family:'IBM Plex Mono'}};
+  c1=new Chart(document.getElementById('c1'),{type:'line',data:{labels:[],datasets:[
+    {data:[],borderColor:'#4e9aff',borderWidth:2,pointRadius:2.5,pointBackgroundColor:'#4e9aff',tension:0.3},
+    {data:[],borderColor:'#f5a455',borderWidth:1.5,pointRadius:0,borderDash:[5,3],tension:0}
+  ]},options:o1});
+
+  // c2 – kro & krw on same axes vs Sw (correct crossing curves)
+  const o2=cloneO(baseOpts);
+  o2.scales.x.title={display:true,text:'Water saturation Sw',color:tM,font:{size:9}};
+  o2.scales.x.min=0; o2.scales.x.max=1;
+  o2.scales.x.ticks.maxTicksLimit=6;
+  o2.scales.y.title={display:true,text:'Relative permeability kr',color:tM,font:{size:9}};
+  o2.scales.y.min=0; o2.scales.y.max=1.05;
+  o2.scales.y.ticks.maxTicksLimit=6;
+  c2=new Chart(document.getElementById('c2'),{type:'line',data:{labels:swArr,datasets:[
+    {data:[],borderColor:'#4e9aff',borderWidth:2.5,pointRadius:0,tension:0,fill:false},
+    {data:[],borderColor:'#2ab77a',borderWidth:2.5,borderDash:[6,3],pointRadius:0,tension:0,fill:false},
+    {type:'scatter',data:[],borderColor:'#f5a455',backgroundColor:'#f5a455',pointRadius:6,pointStyle:'circle'}
+  ]},options:o2});
+
+  // c3 – mobility bar
+  const o3=cloneO(baseOpts);
+  o3.scales.y.title={display:true,text:'md/cp',color:tM,font:{size:9}};
+  c3=new Chart(document.getElementById('c3'),{type:'bar',data:{
+    labels:['λo (oil)','λw (water)','λg (gas)'],
+    datasets:[{data:[0,0,0],
+      backgroundColor:['rgba(78,154,255,0.7)','rgba(42,183,122,0.7)','rgba(224,85,85,0.7)'],
+      borderColor:['#4e9aff','#2ab77a','#e05555'],borderWidth:1.5,borderRadius:4}]
+  },options:o3});
+
+  // c4 – kro/krw ratio vs Sw log scale
+  const o4=cloneO(baseOpts);
+  o4.scales.x.title={display:true,text:'Sw',color:tM,font:{size:9}};
+  o4.scales.x.min=0; o4.scales.x.max=1;
+  o4.scales.x.ticks.maxTicksLimit=6;
+  o4.scales.y={
+    type:'logarithmic',
+    title:{display:true,text:'kro/krw',color:tM,font:{size:9}},
+    ticks:{color:tM,font:{size:9,family:'IBM Plex Mono'},
+      callback:v=>{if(v===0.01||v===0.1||v===1||v===10||v===100)return v;return '';}
+    },
+    grid:{color:gC},border:{color:gC}
+  };
+  c4=new Chart(document.getElementById('c4'),{type:'line',data:{labels:swArr,datasets:[
+    {data:[],borderColor:'#9b7fe8',borderWidth:2.5,pointRadius:0,tension:0,spanGaps:false},
+    {data:[],borderColor:'#f5a455',borderWidth:1.5,borderDash:[5,3],pointRadius:0,tension:0,spanGaps:true}
+  ]},options:o4});
+}
+
+function update(){
+  const p=getP();
+  const isBuildup=document.getElementById('tt-toggle').checked;
+  document.getElementById('v-tt').textContent=isBuildup?'Buildup':'Drawdown';
+
+  // Saturation sum
+  const ss=+(p.So+p.Sw+p.Sg).toFixed(3);
+  const ssEl=document.getElementById('sat-sum');
+  ssEl.textContent=ss.toFixed(2);
+  ssEl.style.color=Math.abs(ss-1)<0.015?'var(--green)':'var(--red)';
+
+  // ── Core calculations ─────────────────────────────────────────────────────
+  const qBt=calcQBt(p);
+  const Ct=calcCt(p);
+
+  // Effective permeabilities — PDF p.10 Perrine equations
+  // kg uses free-gas rate: [qgt(MSCF/d) - qo*Rs/1000] MSCF/d × 1000 SCF/MSCF = SCF/d
+  // then 162.6 × SCF/d × Bg[bbl/SCF] × μg / (m·h) = md
+  const freeGas_MSCFD = p.qgt - p.qo*p.Rs/1000;  // MSCF/d
+  const ko = 162.6 * p.qo          * p.Bo       * p.muO / (p.m * p.h);
+  const kw = 162.6 * p.qw          * p.Bw       * p.muW / (p.m * p.h);
+  const kg = 162.6 * freeGas_MSCFD * p.Bg*1000  * p.muG / (p.m * p.h);
+  // Bg*1000 converts bbl/SCF → bbl/MSCF so units match freeGas_MSCFD
+
+  // Total mobility from (qB)t — PDF p.10 check sum
+  const lt = 162.6 * qBt / (p.m * p.h);
+
+  // Relative permeabilities from Corey at current Sw
+  const KRO = kroF(p.Sw, p);
+  const KRW = krwF(p.Sw, p);
+
+  // Absolute permeability K = ko/kro  (PDF p.11 step 4)
+  const K = KRO > 1e-6 ? ko/KRO : 0;
+
+  // Skin factor — PDF p.11 slides & Example-11 solution (PDF p.20)
+  // m is entered as a POSITIVE number = |slope| of the semi-log straight line.
+  // The slope on Pwf-vs-log(t) is negative (pressure declines), so the
+  // sign is already absorbed when we write (ΔP / |m|).
+  //
+  // BUILDUP  (Horner): s = 1.151·[(Pws1hr − Pwf_shutin) / |m| − log(λt/φCtRw²) + 3.23]
+  //   PDF example: (2466 − 2028)/78 = 5.615 → s = 1.5  ✓
+  //
+  // DRAWDOWN: s = 1.151·[(Pi − Pwf1hr) / |m| − log(λt/φCtRw²) + 3.23]
+  //   where Pwf1hr is the flowing pressure read at t = 1 hr on the MTR line.
+  const logTerm = (lt>0 && p.phi>0 && Ct>0 && p.rw>0)
+    ? Math.log10(lt / (p.phi * Ct * p.rw * p.rw))
+    : 0;
+  let skin;
+  if(isBuildup){
+    // P1hr = Pws1hr (shut-in pressure read at Δt=1hr on MTR line)
+    // Pwf  = flowing BHP at instant of shut-in
+    skin = 1.151 * ((p.P1hr - p.Pwf) / p.m - logTerm + 3.23);
+  } else {
+    // P1hr = Pwf1hr (flowing pressure read at t=1hr on MTR line)
+    // Pi   = initial reservoir pressure
+    skin = 1.151 * ((p.Pi - p.P1hr) / p.m - logTerm + 3.23);
+  }
+
+  // ko/kw ratio (measured)
+  const measRatio = kw > 1e-6 ? ko/kw : 999;
+
+  // ── Display ───────────────────────────────────────────────────────────────
+  document.getElementById('rv-ko').textContent  = ko.toFixed(2);
+  document.getElementById('rv-kw').textContent  = kw.toFixed(2);
+  document.getElementById('rv-kg').textContent  = kg.toFixed(3);
+  document.getElementById('rv-k').textContent   = K.toFixed(2);
+  document.getElementById('rv-s').textContent   = skin.toFixed(2);
+  document.getElementById('rv-lt').textContent  = lt.toFixed(2);
+  document.getElementById('rv-ct').textContent  = (Ct*1e6).toFixed(2);
+  document.getElementById('rv-kro').textContent = KRO.toFixed(4);
+  document.getElementById('rv-krw').textContent = KRW.toFixed(4);
+  document.getElementById('rv-ratio').textContent = KRW>1e-6?(KRO/KRW).toFixed(2):'∞';
+  document.getElementById('rv-qbt').textContent = qBt.toFixed(1);
+
+  // ── Method selection ──────────────────────────────────────────────────────
+  let method='perrine';
+  if(p.Pi>5000) method='psq';
+  else if(p.Sg>0.15) method='psp';
+
+  const mwrap=document.getElementById('mbox-wrap');
+  mwrap.className='panel method-panel';
+  if(method==='perrine'){
+    mwrap.classList.add('m-perrine');
+    document.getElementById('mbox-icon').textContent='🔵';
+    document.getElementById('mbox-name').textContent='Perrine–Martin Method';
+    document.getElementById('mbox-cond').textContent='P < 5000 psi · Sg ≤ 0.15 · Most common method';
+    document.getElementById('mbox-desc').textContent='Replace qB→(qB)t, k/μ→λt, c→Ct. Valid when pressure & saturation gradients are small, saturation changes negligible during test.';
+    const eq=isBuildup
+      ?`<div class="eq-head">BUILDUP (Horner semi-log)</div>`+
+       `P_ws vs log[(t_p+Δt)/Δt]   →   MTR slope m = ${p.m} psi/cycle\n\n`+
+       `k_o = 162.6·q_o·B_o·μ_o/(m·h) = 162.6×${p.qo}×${p.Bo}×${p.muO}/(${p.m}×${p.h}) = ${ko.toFixed(2)} md\n`+
+       `k_w = 162.6·q_w·B_w·μ_w/(m·h) = ${kw.toFixed(2)} md\n`+
+       `k_g = 162.6·[q_gt−q_o·R_s/1000]·B_g·μ_g/(m·h) = ${kg.toFixed(3)} md\n\n`+
+       `λ_t = k_o/μ_o + k_w/μ_w + k_g/μ_g\n`+
+       `    = ${ko.toFixed(2)}/${p.muO} + ${kw.toFixed(2)}/${p.muW} + ${kg.toFixed(3)}/${p.muG}\n`+
+       `    = ${lt.toFixed(2)} md/cp\n\n`+
+       `k_ro(S_w=${p.Sw}) = ${KRO.toFixed(4)}  [Corey]\n`+
+       `K = k_o/k_ro = ${ko.toFixed(2)}/${KRO.toFixed(4)} = ${K.toFixed(2)} md\n\n`+
+       `C_t = S_o·c_o+S_w·c_w+S_g·c_g+c_f = ${(Ct*1e6).toFixed(2)}×10⁻⁶ psi⁻¹\n\n`+
+       `s = 1.151·[(P_ws1hr−P_wf)/|m| − log(λ_t/φ·C_t·r_w²) + 3.23]\n`+
+       `  = 1.151·[(${p.P1hr}−${p.Pwf})/${p.m} − log(${lt.toFixed(2)}/(${p.phi}·${(Ct*1e6).toFixed(2)}e-6·${p.rw}²)) + 3.23]\n`+
+       `  = ${skin.toFixed(2)}`
+      :`<div class="eq-head">DRAWDOWN (semi-log)</div>`+
+       `P_wf vs log(t)   →   MTR slope m = ${p.m} psi/cycle\n\n`+
+       `k_o = 162.6·q_o·B_o·μ_o/(m·h) = ${ko.toFixed(2)} md\n`+
+       `k_w = 162.6·q_w·B_w·μ_w/(m·h) = ${kw.toFixed(2)} md\n`+
+       `k_g = 162.6·[q_gt−q_o·R_s/1000]·B_g·μ_g/(m·h) = ${kg.toFixed(3)} md\n\n`+
+       `λ_t = ${lt.toFixed(2)} md/cp\n`+
+       `K = k_o/k_ro = ${ko.toFixed(2)}/${KRO.toFixed(4)} = ${K.toFixed(2)} md\n`+
+       `C_t = ${(Ct*1e6).toFixed(2)}×10⁻⁶ psi⁻¹\n\n`+
+       `s = 1.151·[(P_i−P_wf1hr)/|m| − log(λ_t/φ·C_t·r_w²) + 3.23]\n`+
+       `  = 1.151·[(${p.Pi}−${p.P1hr})/${p.m} − log(${lt.toFixed(2)}/(${p.phi}·${(Ct*1e6).toFixed(2)}e-6·${p.rw}²)) + 3.23]\n`+
+       `  = ${skin.toFixed(2)}`;
+    document.getElementById('mbox-eq').innerHTML=eq;
+  } else if(method==='psq'){
+    mwrap.classList.add('m-psq');
+    document.getElementById('mbox-icon').textContent='🟠';
+    document.getElementById('mbox-name').textContent='Pressure-Squared Method';
+    document.getElementById('mbox-cond').textContent='P > 5000 psi or volatile oil — k_o/(μ_o·B_o) linear with P';
+    document.getElementById('mbox-desc').textContent='Plot P² vs log(t). Empirical slope a=[ko/(μoBo)]i/Pi. Verify linearity R²>0.95. ko and K calculated same way; use phase mobilities for kw, kg.';
+    document.getElementById('mbox-eq').innerHTML=
+      `<div class="eq-head">${isBuildup?'BUILDUP':'DRAWDOWN'} — Pressure-Squared</div>`+
+      `${isBuildup?'Pi²−Pws² vs log[(tp+Δt)/Δt]':'Pi²−Pwf² vs log(t)'}\n`+
+      `m' = ΔP²/Δlog(t)  [psi²/cycle]\n`+
+      `a  = 325.2·qo/(m'·h)\n`+
+      `ko = 325.2·qo·Pi·(μoBo)i/(m'·h)   [Drawdown]\n`+
+      `ko = 325.2·qo·p̄·(μ̄oBo)i/(m'·h)  [Buildup]\n`+
+      `K  = ko/kro  ;  s from P²1hr\n\n`+
+      `Current k_o = ${ko.toFixed(2)} md  ·  K = ${K.toFixed(2)} md  ·  s = ${skin.toFixed(2)}`;
+  } else {
+    mwrap.classList.add('m-psp');
+    document.getElementById('mbox-icon').textContent='🟢';
+    document.getElementById('mbox-name').textContent='Pseudo-Pressure Method';
+    document.getElementById('mbox-cond').textContent='S_g > 0.15 — solution-gas drive — most rigorous';
+    document.getElementById('mbox-desc').textContent='Most accurate. m(p)=∫λt(p\')dp\' exactly linearises the flow equation. μ, B, kr all vary with pressure. Essential for gas-condensate & volatile oil.';
+    document.getElementById('mbox-eq').innerHTML=
+      `<div class="eq-head">${isBuildup?'BUILDUP':'DRAWDOWN'} — Pseudo-Pressure</div>`+
+      `m(p) = ∫[pbase→p] λt(p') dp'  where  λt = kro/μo + krg/μg + krw/μw\n`+
+      `Δm(p) = m(Pi) − m(${isBuildup?'Pws':'Pwf'})  vs  ${isBuildup?'log[(tp+Δt)/Δt]':'log(t)'}\n`+
+      `Identify MTR → slope m' → λt·h = 162.6·(qB)t/m'\n`+
+      `ko, kw, kg from phase-rate ratios × λt·h\n`+
+      `K = ko/kro  ;  s from Δm(p)1hr\n\n`+
+      `Current k_o = ${ko.toFixed(2)} md  ·  K = ${K.toFixed(2)} md  ·  s = ${skin.toFixed(2)}`;
+  }
+
+  // ── Chart 1: Transient ────────────────────────────────────────────────────
+  const N=30;
+  const tA=Array.from({length:N},(_,i)=>+(0.1*Math.pow(1000,i/(N-1))).toFixed(4));
+  let xs,ys,xLbl,yLbl,titleStr,subStr;
+  if(method==='perrine'){
+    if(isBuildup){
+      xs=tA.map(dt=>+Math.log10((p.tp+dt)/dt).toFixed(4)).reverse();
+      ys=xs.map(hx=>+(p.Pi-p.m*hx).toFixed(1));
+      xLbl='log[(tp+Δt)/Δt]'; yLbl='Pws (psi)'; titleStr='Buildup — Pws vs Horner time'; subStr='Perrine–Martin · Y: P_ws · X: Horner time · slope m='+p.m+' psi/cycle';
+    } else {
+      const argC=Math.log10(lt/(p.phi*Ct*p.rw*p.rw))-3.23+0.869*skin;
+      xs=tA.map(t=>+Math.log10(t).toFixed(4));
+      ys=xs.map(lgt=>+(p.Pi-p.m*(lgt+argC)).toFixed(1));
+      xLbl='log t (hr)'; yLbl='Pwf (psi)'; titleStr='Drawdown — Pwf vs log(t)'; subStr='Perrine–Martin · Y: P_wf · X: log t · slope m='+p.m+' psi/cycle';
+    }
+  } else if(method==='psq'){
+    const mPsq=p.m*(p.Pi+p.Pwf);
+    if(isBuildup){
+      xs=tA.map(dt=>+Math.log10((p.tp+dt)/dt).toFixed(4)).reverse();
+      ys=xs.map(hx=>+(mPsq*hx).toFixed(0));
+      xLbl='log[(tp+Δt)/Δt]'; yLbl='Pi²−Pws² (psi²)'; titleStr='Buildup P² — Pi²−Pws² vs Horner'; subStr='P-Squared method';
+    } else {
+      const argC=Math.log10(lt/(p.phi*Ct*p.rw*p.rw))-3.23;
+      xs=tA.map(t=>+Math.log10(t).toFixed(4));
+      ys=xs.map(lgt=>{const Pw=p.Pi-p.m*(lgt+argC);return +(p.Pi*p.Pi-Pw*Pw).toFixed(0);});
+      xLbl='log t (hr)'; yLbl='Pi²−Pwf² (psi²)'; titleStr='Drawdown P² — Pi²−Pwf² vs log(t)'; subStr='P-Squared method';
+    }
+  } else {
+    const sc=lt*p.Pi*0.5;
+    if(isBuildup){
+      xs=tA.map(dt=>+Math.log10((p.tp+dt)/dt).toFixed(4)).reverse();
+      ys=xs.map((_,i)=>+(sc*i/(xs.length-1)).toFixed(2));
+      xLbl='log[(tp+Δt)/Δt]'; yLbl='Δm(p)'; titleStr='Buildup Pseudo-P — Δm(p) vs Horner'; subStr='Pseudo-Pressure method';
+    } else {
+      xs=tA.map(t=>+Math.log10(t).toFixed(4));
+      ys=xs.map((_,i)=>+(sc*i/(xs.length-1)).toFixed(2));
+      xLbl='log t (hr)'; yLbl='Δm(p)'; titleStr='Drawdown Pseudo-P — Δm(p) vs log(t)'; subStr='Pseudo-Pressure method';
+    }
+  }
+  const mS=Math.floor(N*0.3),mE=Math.floor(N*0.7);
+  const slM=(ys[mE]-ys[mS])/(xs[mE]-xs[mS]);
+  const mtrL=xs.map((x,i)=>(i>=mS&&i<=mE)?+(ys[mS]+slM*(x-xs[mS])).toFixed(2):null);
+  document.getElementById('ch1-title').textContent=titleStr;
+  document.getElementById('ch1-sub').textContent=subStr;
+  c1.options.scales.x.title.text=xLbl;
+  c1.options.scales.y.title.text=yLbl;
+  c1.data.labels=xs; c1.data.datasets[0].data=ys; c1.data.datasets[1].data=mtrL;
+  c1.update('none');
+
+  // ── Chart 2: kro & krw vs Sw ──────────────────────────────────────────────
+  // Redraw Corey curves using current Swi, Sor, kro0, krw0
+  c2.data.datasets[0].data = swArr.map(sw=>kroF(sw,p));
+  c2.data.datasets[1].data = swArr.map(sw=>krwF(sw,p));
+  // Two orange dots at current Sw: one on kro curve, one on krw curve
+  c2.data.datasets[2].data = [{x:p.Sw,y:+KRO.toFixed(4)},{x:p.Sw,y:+KRW.toFixed(4)}];
+  document.getElementById('ch2-sub').textContent=
+    `Corey · S_wi=${p.Swi.toFixed(2)} · S_or=${p.Sor.toFixed(2)} · k°_ro=${p.kro0.toFixed(2)} · k°_rw=${p.krw0.toFixed(2)} · current S_w=${p.Sw.toFixed(2)} → k_ro=${KRO.toFixed(3)} · k_rw=${KRW.toFixed(3)}`;
+  c2.update('none');
+
+  // ── Chart 3: Phase mobility bar ───────────────────────────────────────────
+  c3.data.datasets[0].data=[+(ko/p.muO).toFixed(3),+(kw/p.muW).toFixed(3),+(kg/p.muG).toFixed(3)];
+  c3.update('none');
+
+  // ── Chart 4: kro/krw ratio vs Sw (log, PDF Fig.2) ────────────────────────
+  // Curve: kro(sw)/krw(sw) for each sw point, null when krw≈0
+  const ratioData=swArr.map(sw=>{
+    const kr=krwF(sw,p);
+    return kr>1e-5 ? +(kroF(sw,p)/kr).toFixed(5) : null;
+  });
+  c4.data.datasets[0].data=ratioData;
+  // Horizontal dashed line at measured ko/kw — shows what Sw corresponds to measured ratio
+  c4.data.datasets[1].data=swArr.map(()=>measRatio<1e4?+measRatio.toFixed(4):null);
+  c4.update('none');
+}
+
+initCharts();
+update();
+document.querySelectorAll('.fp-in').forEach(el=>el.addEventListener('input',update));
+document.getElementById('tt-toggle').addEventListener('change',update);
+</script>
+</body>
+</html>
